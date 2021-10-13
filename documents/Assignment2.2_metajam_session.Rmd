@@ -1,0 +1,75 @@
+---
+title: "Assignment 2.2 Metajam Alaskan Households"
+author: "Julia Parish"
+date: "10/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(metajam)
+library(here)
+library(janitor)
+
+```
+
+
+### Download the data
+```{r error=TRUE, eval = FALSE}
+
+# set inputs
+data_obj <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A7fc6f6db-c5ea-426a-a743-1f2edafb43b8"
+
+path <- "."
+
+# download data and metadata
+
+metajam::download_d1_data(data_obj, path)
+# Returned
+#[1] "~/Desktop/doi_10.18739_A2DP3X__Alaska_Schools_Rentention2009_15"
+
+
+```
+```{r}
+data_list <- read_d1_files(folder_path =  "C:/Users/julia/Documents/_MEDS/EDS213_Metadata_Brun/Assignment/EDS-213-Assignment_2.1_2.2/data/doi_10.5063_F1CJ8BPH__household_language__csv")
+
+
+# get the dataframe
+hh_data <- data_list$data %>% 
+  clean_names()
+
+hh_metadata <- data_list$summary_metadata
+
+
+```
+### Write a piece of code that will compute the percentage of Alaskan household speaking only English for the year 2009 to 2015
+
+```{r}
+
+english <- hh_data %>% 
+  filter(year >= 2009,
+         year <= 2015)  %>% 
+  group_by(year) %>% 
+  summarise(percent = sum(speak_only_english) / sum(total) * 100) 
+
+english
+  
+```
+
+### Create a plot to visualize this data
+```{r}
+percent_english <- english %>% 
+  ggplot(aes(x = year, y = percent)) +
+  geom_point(color = "goldenrod1",
+             size = 4) + 
+  labs(title = "Percent of English Speaking Only Households in Alaska",
+       subtitle = "2009 - 2015",
+       x = "Year",
+       y = "Percent of Households") +
+  theme_minimal()
+
+percent_english
+
+```

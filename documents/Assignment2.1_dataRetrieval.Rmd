@@ -1,0 +1,179 @@
+---
+title: "Assignment_2.1_dataRetrieval"
+author: "Julia Parish"
+date: "10/13/2021"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dataRetrieval)
+library(tidyverse)
+library(here)
+library(lubridate)
+
+```
+
+# Assignment 2.1 dataRetrieval
+1. Add the Santa Paula Creek gauge to exercise we did in class
+2. What is the best way to query multiple sites using this R package?
+3. Create a plot showing any stream flow response to the rain of last night (10/04). Determine at what time did the stream flow peaked (if any) at the two locations?
+
+## 2.1.1 Add the Santa Paula Creek gauge to exercise we did in class
+```{r combined waterways}
+
+# Ventura River and Santa Paula Creek discharge rates
+sitenumber <- c("11118500", "11113500")
+
+parameterd <- "00060" # discharge
+
+startdate <- "2019-10-01"
+
+enddate <- "2020-10-05"
+
+#Raw discharge data:
+combined_discharge <- readNWISdv(sitenumber,
+                        parameterd,
+                        startdate,
+                        enddate) %>% 
+                      ## rename column x_00060_00003 to discharge
+                      rename(discharge = X_00060_00003, code = X_00060_00003_cd) %>% 
+                      mutate(site_name = if_else(site_no == "11118500", "Ventura River",
+                                   if_else(site_no == "11113500", "Santa Paula Creek", ""))) %>%  
+                      relocate(site_name, .before = "site_no")
+
+```
+
+```{r discharge plot}
+
+discharge_plot <- combined_discharge %>% 
+                  ggplot(aes(color = site_name)) +
+                  geom_line(aes(x = Date, y = discharge)) +
+                  labs(title = "Discharge Rates of Ventura River & Santa Paula Creek, California",
+                       x = "Date and Time (PST)",
+                       y = "Discharge Rate in cubic feet",
+                       color = "Site") +
+                  theme_minimal()
+
+discharge_plot
+
+
+```
+
+
+## 2.1.2 What is the best way to query multiple sites using this R package?
+
+* Assigning sites as vectors allows you to query the same variables and dates at the same time. 
+
+```{r mean max}
+statCd <- c("00001","00003")  # Mean and maximum
+
+maxmeanflow <- readNWISdv(sitenumber,
+                   parameterd,
+                   startdate, 
+                   enddate,
+                   statCd = statCd)
+  
+maxmeanflow <- renameNWISColumns(maxmeanflow) %>% 
+                # add a new column that list the site name              
+                mutate(site_name = if_else(site_no == "11118500", "Ventura River",
+                                   if_else(site_no == "11113500", "Santa Paula Creek", ""))) %>%  
+                relocate(site_name, .before = "site_no") # move new site name column to before site_no# rename column names using the renameNWISColumns function
+
+#names(attributes(maxmeanflow))
+
+
+```
+
+```{r maxmeanflow plot}
+
+maxmeanflow_plot <- maxmeanflow %>% 
+                  ggplot(aes(color = site_name)) +
+                  geom_line(aes(x = Date, y = Flow)) +
+                  labs(title = "Flow Rates of Ventura River & Santa Paula Creek, California",
+                       subtitle = "Max and Mean Rates",
+                       x = "Date and Time (PST)",
+                       y = "Flow Rate in cubic feet",
+                       color = "Site") +
+                  theme_minimal()
+
+maxmeanflow_plot
+```
+
+
+
+## 2.1.3 Create a plot showing any stream flow response to the rain of last night (10/04). Determine at what time did the stream flow peaked (if any) at the two locations?
+
+```{r read in site info}
+
+startdate = as.Date("2021-10-04T00:00")
+enddate = as.Date("2021-10-05T24:00")
+
+spv_info <- readNWISsite(sitenumber)
+  
+combined_flow = readNWISuv(
+                  siteNumber = c("11118500", "11113500"),
+                  parameterCd = "00060",
+                  startDate = startdate,
+                  endDate = enddate,
+                  tz = "PST")
+
+combined_flow <- renameNWISColumns(combined_flow) %>% 
+                rename(flow = Flow_Inst) %>% # rename column names using the renameNWISColumns function
+                # add a new column that list the site name              
+                mutate(site_name = if_else(site_no == "11118500", "Ventura River",
+                                   if_else(site_no == "11113500", "Santa Paula Creek", ""))) %>%  
+                relocate(site_name, .before = "site_no") # move new site name column to before site_no
+  
+
+```
+
+```{r filter sites}
+# filter by site
+
+# ventura river flow data
+ventura_flow <- filter(combined_flow, site_no == "11118500")
+
+# santa paula creek flow data
+spc_flow <- filter(combined_flow, site_no == "11113500")
+
+
+```
+
+
+```{r combined plot}
+
+stormevent_plot <- combined_flow %>% 
+                  ggplot(aes(color = site_name)) +
+                  geom_line(aes(x = dateTime, y = flow)) +
+                  # geom_vline(xintercept = max(spc_flow$flow), 
+                  #            color = "#444343", size = 1.1) +
+                  annotate("text", 
+                       label = "Max = 0.70\n10/05 3:30AM", 
+                       x = as.POSIXct("2021-10-05 04:00:00"), 
+                       y = 0.75, 
+                       color = "black",
+                       size = 3) +
+                  # geom_vline(xintercept = max(ventura_flow$flow), 
+                  #            color = "#444343", size = 1.1) +
+                  annotate("text", 
+                       label = "Max = 1.08\n10/05 12:25AM", 
+                       x = as.POSIXct("2021-10-05 01:30:00"), 
+                       y = 0.98, 
+                       color = "black",
+                       size = 3) +
+                  labs(title = "Flow Rates of Ventura River & Santa Paula Creek, California",
+                       subtitle = "Storm Event Occurred on October 04, 2021",
+                       x = "Date and Time (PST)",
+                       y = "Flow Rate in cubic feet",
+                       color = "Site") +
+                  theme_minimal()
+
+stormevent_plot
+```
+
+
+

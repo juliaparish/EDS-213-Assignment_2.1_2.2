@@ -1,0 +1,51 @@
+---
+title: "dataretrieval_usgs_streams"
+author: "Julia Parish"
+date: "10/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dataRetrieval)
+library(tidyverse)
+library(here)
+
+```
+
+```{r discharge}
+
+# Ventura River, Ventura County
+sitenumber <- "11118500" 
+
+parameterd <- "00060" # discharge
+
+startdate <- "2019-10-01"
+
+enddate <- "2020-10-05"
+
+#Raw discharge data:
+discharge <- readNWISdv(sitenumber,
+                        parameterd,
+                        startdate,
+                        enddate) %>% 
+  ## rename column x_00060_00003 to discharge
+            rename(discharge = X_00060_00003)
+
+
+```
+
+
+```{r}
+statd <- c("00001","00003")  # Mean and maximum
+
+flow <- readNWISdv(sitenumber,
+                   parameterd,
+                   startdate, 
+                   enddate,
+                   statd = statd)
+
+
+```
+
